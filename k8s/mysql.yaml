@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: debezium
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      initContainers:
+        - name: fix-permissions
+          image: busybox
+          command: ['sh', '-c', 'rm -rf /var/lib/mysql/* /var/lib/mysql/..?* /var/lib/mysql/.[!.]* 2>/dev/null || true && chown -R 999:999 /var/lib/mysql && chmod -R 755 /var/lib/mysql']
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+          securityContext:
+            runAsUser: 0
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "debezium"
+            - name: MYSQL_USER
+              value: "mysqluser"
+            - name: MYSQL_PASSWORD
+              value: "mysqlpw"
+            - name: MYSQL_DATABASE
+              value: "inventory"
+          args:
+            - "--log-bin=mysql-bin"
+            - "--binlog-format=ROW"
+            - "--server-id=1"
+            - "--gtid-mode=ON"
+            - "--enforce-gtid-consistency=ON"
+            - "--binlog-row-image=FULL"
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "mysqladmin ping -h localhost -u root -p$MYSQL_ROOT_PASSWORD"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "mysqladmin ping -h localhost -u root -p$MYSQL_ROOT_PASSWORD"
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: mysql-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: debezium
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
