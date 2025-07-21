@@ -5,18 +5,17 @@ import (
 )
 
 type Config struct {
-	Port            string
-	KafkaConnectURL string
-	DatabaseURL     string
-	LogLevel        string
+	Port         string
+	ConnectorUrl string
+	DatabaseURL  string
+	LogLevel     string
 }
 
-func Load(configFile, port, kafkaURL string) *Config {
+func Load() *Config {
 	cfg := &Config{
-		Port:            getEnvOrDefault("PORT", port),
-		KafkaConnectURL: getEnvOrDefault("KAFKA_CONNECT_URL", kafkaURL),
-		DatabaseURL:     os.Getenv("DATABASE_URL"),
-		LogLevel:        getEnvOrDefault("LOG_LEVEL", "info"),
+		Port:         getEnvOrDefault("PORT", "8080"),
+		ConnectorUrl: getEnvOrDefault("KAFKA_CONNECT_URL", "http://192.168.49.2:31994"),
+		LogLevel:     getEnvOrDefault("LOG_LEVEL", "info"),
 	}
 
 	return cfg

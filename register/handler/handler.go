@@ -9,19 +9,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type CDCHandler struct {
+type CDCHandler interface {
+	RegisterConnector(c *gin.Context)
+	ListConnectors(c *gin.Context)
+	GetConnectorStatus(c *gin.Context)
+	DeleteConnector(c *gin.Context)
+}
+type cDCHandler struct {
 	service service.CDCRegistrationService
 	logger  logger.Logger
 }
 
-func NewCDCHandler(service service.CDCRegistrationService, logger logger.Logger) *CDCHandler {
-	return &CDCHandler{
+func NewCDCHandler(service service.CDCRegistrationService, logger logger.Logger) CDCHandler {
+	return &cDCHandler{
 		service: service,
 		logger:  logger,
 	}
 }
 
-func (h *CDCHandler) RegisterConnector(c *gin.Context) {
+func (h *cDCHandler) RegisterConnector(c *gin.Context) {
 	var req models.RegisterConnectorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Error("Invalid request payload", logger.Error(err))
@@ -42,7 +48,7 @@ func (h *CDCHandler) RegisterConnector(c *gin.Context) {
 	c.JSON(http.StatusCreated, response)
 }
 
-func (h *CDCHandler) ListConnectors(c *gin.Context) {
+func (h *cDCHandler) ListConnectors(c *gin.Context) {
 	h.logger.Info("Listing connectors")
 
 	response, err := h.service.ListConnectors()
@@ -55,7 +61,7 @@ func (h *CDCHandler) ListConnectors(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func (h *CDCHandler) GetConnectorStatus(c *gin.Context) {
+func (h *cDCHandler) GetConnectorStatus(c *gin.Context) {
 	connectorName := c.Param("name")
 
 	h.logger.Info("Getting connector status", logger.String("connector_name", connectorName))
@@ -70,7 +76,7 @@ func (h *CDCHandler) GetConnectorStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, status)
 }
 
-func (h *CDCHandler) DeleteConnector(c *gin.Context) {
+func (h *cDCHandler) DeleteConnector(c *gin.Context) {
 	connectorName := c.Param("name")
 
 	h.logger.Info("Deleting connector", logger.String("connector_name", connectorName))
@@ -83,11 +89,4 @@ func (h *CDCHandler) DeleteConnector(c *gin.Context) {
 
 	h.logger.Info("Connector deleted successfully", logger.String("connector_name", connectorName))
 	c.JSON(http.StatusOK, gin.H{"message": "Connector deleted successfully"})
-}
-
-func (h *CDCHandler) HealthCheck(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "healthy",
-		"service": "cdc-registration",
-	})
 }

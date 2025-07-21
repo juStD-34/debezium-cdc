@@ -2,14 +2,14 @@ package http
 
 import (
 	"go.uber.org/zap"
-	"register/handler"
+	"net/http"
 	"register/pkg/logger"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-func NewGinServer(handler *handler.CDCHandler, logger logger.Logger) *gin.Engine {
+func NewGinServer(logger logger.Logger) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 
 	r := gin.New()
@@ -19,16 +19,7 @@ func NewGinServer(handler *handler.CDCHandler, logger logger.Logger) *gin.Engine
 	r.Use(GinLogger(logger))
 
 	// Health check
-	r.GET("/health", handler.HealthCheck)
-
-	// API routes
-	api := r.Group("/api/v1")
-	{
-		api.POST("/connectors", handler.RegisterConnector)
-		api.GET("/connectors", handler.ListConnectors)
-		api.GET("/connectors/:name/status", handler.GetConnectorStatus)
-		api.DELETE("/connectors/:name", handler.DeleteConnector)
-	}
+	r.GET("/health", healthCheck)
 
 	return r
 }
@@ -49,4 +40,11 @@ func GinLogger(logger logger.Logger) gin.HandlerFunc {
 			zap.String("client_ip", c.ClientIP()),
 		)
 	}
+}
+
+func healthCheck(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "healthy",
+		"service": "cdc-registration",
+	})
 }

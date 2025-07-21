@@ -39,35 +39,32 @@ func runServer(cmd *cobra.Command, args []string) {
 	// Initialize logger
 	log := logger.NewZapLogger()
 	defer log.Sync()
-
+	cfg := config.Load()
+	c := http.NewRestyClient(log)
+	svc := service.NewCDCRegistrationService(cfg, log, c)
 	log.Info("Starting CDC Registration Service")
 
-	// Load configuration
-	cfg := config.Load(configFile, port, kafkaURL)
-
-	// Initialize database (if needed for storing connector metadata)
-	//var db *db.QueryBuilder
-	//if cfg.DatabaseURL != "" {
-	//	db = db.NewQueryBuilder(cfg.DatabaseURL, log)
-	//}
-	//
-	// Initialize HTTP client
-	httpClient := http.NewRestyClient(log)
-	//
-	//// Initialize repository
-	////repo := db.NewConnectorRepository(db, log)
-	//
-	//// Initialize service
-	svc := service.NewCDCRegistrationService("kafka")
-
-	// Initialize handler
 	h := handler.NewCDCHandler(svc, log)
 
-	// Setup HTTP server
-	server := http.NewGinServer(h, log)
+	r := http.NewGinServer(log)
+	api := r.Group("/api")
+	{
+		api.POST("/connector", h.RegisterConnector)
+		api.GET("connectors", h.ListConnectors)
+		api.GET("/connectors/:name/status", h.GetConnectorStatus)
+		api.DELETE("/connectors/:name", h.DeleteConnector)
+	}
 
-	log.Info("Server starting", logger.String("port", cfg.Port))
-	if err := server.Run(":" + cfg.Port); err != nil {
-		log.Fatal("Failed to start server", logger.Error(err))
+	log.Info("Starting CDC Registration Service")
+	for _, route := range r.Routes() {
+		log.Info("Registered route",
+			logger.String("method", route.Method),
+			logger.String("path", route.Path),
+			logger.String("handler", route.Handler),
+		)
+	}
+	err := r.Run(":" + port)
+	if err != nil {
+		return
 	}
 }

@@ -1,10 +1,7 @@
 package service
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"register/models"
 	"strings"
 )
@@ -89,58 +86,12 @@ func (s *cDCRegistrationService) formatTableList(database string, tables []strin
 	return strings.Join(formattedTables, ",")
 }
 
-func (s *cDCRegistrationService) connectorExists(connectorName string) (bool, error) {
-	connectors, err := s.ListConnectors()
-	if err != nil {
-		return false, err
-	}
-
-	for _, name := range connectors.Connectors {
-		if name == connectorName {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-func (s *cDCRegistrationService) createConnector(config map[string]interface{}) error {
-	jsonData, err := json.Marshal(config)
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
-	}
-
-	url := fmt.Sprintf("%s/connectors", s.kafkaConnectURL)
-	resp, err := s.httpClient.Post(url, "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return fmt.Errorf("failed to post to kafka connect: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		var errorResponse map[string]interface{}
-		json.NewDecoder(resp.Body).Decode(&errorResponse)
-		return fmt.Errorf("kafka connect error (status %d): %v", resp.StatusCode, errorResponse)
-	}
-
-	return nil
-}
-
 func (s *cDCRegistrationService) getConnectorStatus(connectorName string) (*models.ConnectorStatus, error) {
-	url := fmt.Sprintf("%s/connectors/%s/status", s.kafkaConnectURL, connectorName)
-
-	resp, err := s.httpClient.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get connector status: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get status, code: %d", resp.StatusCode)
-	}
+	url := fmt.Sprintf("%s/connectors/%s/status", s.cfg.ConnectorUrl, connectorName)
 
 	var status models.ConnectorStatus
-	if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
-		return nil, fmt.Errorf("failed to decode status: %w", err)
+	if err := s.client.Get(url, &status); err != nil {
+		return nil, fmt.Errorf("failed to get connector status for %s: %w", connectorName, err)
 	}
 
 	return &status, nil

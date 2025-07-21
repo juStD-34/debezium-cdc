@@ -1,9 +1,10 @@
 package service
 
 import (
+	"register/config"
 	"register/models"
 	"register/pkg/http"
-	"time"
+	"register/pkg/logger"
 )
 
 type CDCRegistrationService interface {
@@ -14,13 +15,15 @@ type CDCRegistrationService interface {
 }
 
 type cDCRegistrationService struct {
-	kafkaConnectURL string
-	httpClient      *http.HTTPClient
+	cfg    *config.Config
+	log    logger.Logger
+	client http.HTTPClient
 }
 
-func NewCDCRegistrationService(kafkaConnectURL string) CDCRegistrationService {
+func NewCDCRegistrationService(cfg *config.Config, log logger.Logger, c http.HTTPClient) CDCRegistrationService {
 	return &cDCRegistrationService{
-		kafkaConnectURL: kafkaConnectURL,
-		httpClient:      &http.Client{Timeout: 30 * time.Second},
+		cfg:    cfg,
+		log:    log,
+		client: c,
 	}
 }
