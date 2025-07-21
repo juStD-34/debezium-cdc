@@ -30,6 +30,7 @@ spec:
         - name: kafka-connect
           image: debezium/connect:2.5
           env:
+            # Legacy environment variables (for backward compatibility)
             - name: BOOTSTRAP_SERVERS
               value: "kafka:9092"
             - name: GROUP_ID
@@ -46,6 +47,7 @@ spec:
               value: "1"
             - name: STATUS_STORAGE_REPLICATION_FACTOR
               value: "1"
+            # Modern CONNECT_ prefixed variables
             - name: CONNECT_BOOTSTRAP_SERVERS
               value: "kafka:9092"
             - name: CONNECT_REST_ADVERTISED_HOST_NAME
@@ -60,6 +62,13 @@ spec:
               value: "docker-connect-offsets"
             - name: CONNECT_STATUS_STORAGE_TOPIC
               value: "docker-connect-status"
+            - name: CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR
+              value: "1"
+            - name: CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR
+              value: "1"
+            - name: CONNECT_STATUS_STORAGE_REPLICATION_FACTOR
+              value: "1"
+            # Converter settings
             - name: CONNECT_KEY_CONVERTER
               value: "org.apache.kafka.connect.json.JsonConverter"
             - name: CONNECT_VALUE_CONVERTER
@@ -68,31 +77,27 @@ spec:
               value: "org.apache.kafka.connect.json.JsonConverter"
             - name: CONNECT_INTERNAL_VALUE_CONVERTER
               value: "org.apache.kafka.connect.json.JsonConverter"
+            # Remove problematic logging configuration
             - name: CONNECT_LOG4J_ROOT_LOGLEVEL
               value: "INFO"
-            - name: CONNECT_LOG4J_LOGGERS
-              value: "org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR"
-            - name: CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR
-              value: "1"
-            - name: CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR
-              value: "1"
-            - name: CONNECT_STATUS_STORAGE_REPLICATION_FACTOR
-              value: "1"
+            # Plugin path for Debezium connectors
+            - name: CONNECT_PLUGIN_PATH
+              value: "/kafka/connect"
           ports:
             - containerPort: 8083
           readinessProbe:
             httpGet:
               path: /
               port: 8083
-            initialDelaySeconds: 30
+            initialDelaySeconds: 45
             periodSeconds: 10
             timeoutSeconds: 5
-            failureThreshold: 3
+            failureThreshold: 6
           livenessProbe:
             httpGet:
               path: /
               port: 8083
-            initialDelaySeconds: 60
+            initialDelaySeconds: 90
             periodSeconds: 30
             timeoutSeconds: 10
             failureThreshold: 3
